@@ -1,0 +1,6 @@
+---
+- name: Restart campusfix
+  ansible.builtin.systemd:
+    name: campusfix
+    state: restarted
+    daemon_reload: true

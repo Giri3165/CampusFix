@@ -1,0 +1,30 @@
+---
+- name: Install MySQL server and PyMySQL
+  ansible.builtin.apt:
+    name: [mysql-server, python3-pymysql]
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Make sure MySQL is running
+  ansible.builtin.service:
+    name: mysql
+    state: started
+    enabled: true
+
+- name: Create the CampusFix database
+  community.mysql.mysql_db:
+    name: "{{ db_name }}"
+    encoding: utf8mb4
+    state: present
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+
+- name: Create the application database user
+  community.mysql.mysql_user:
+    name: "{{ db_user }}"
+    password: "{{ db_password }}"
+    host: localhost
+    priv: "{{ db_name }}.*:ALL"
+    state: present
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+  no_log: true

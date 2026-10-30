@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head th:replace="~{fragments :: head('Smart Campus Complaint Management')}"></head>
+<body>
+<nav class="navbar navbar-expand-lg cf-navbar">
+    <div class="container">
+        <a class="brand" th:href="@{/}"><i class="bi bi-tools"></i> Campus<span>Fix</span></a>
+        <div class="ms-auto d-flex gap-2">
+            <th:block sec:authorize="isAuthenticated()">
+                <a class="btn btn-teal btn-sm" th:href="@{/dashboard}">Go to dashboard</a>
+            </th:block>
+            <th:block sec:authorize="!isAuthenticated()">
+                <a class="btn btn-outline-light btn-sm" th:href="@{/login}">Log in</a>
+                <a class="btn btn-teal btn-sm" th:href="@{/register}">Register</a>
+            </th:block>
+        </div>
+    </div>
+</nav>
+
+<header class="hero">
+    <div class="container">
+        <div class="row align-items-center g-5">
+            <div class="col-lg-7">
+                <h1 class="display-4">Report it. Track it. Get it fixed.</h1>
+                <p class="lead my-4">CampusFix gives every student a direct line to the maintenance team. Report a broken fan, a leaking tap or weak Wi-Fi in under a minute and follow the repair until it is done.</p>
+                <div class="d-flex flex-wrap gap-2">
+                    <a class="btn btn-teal btn-lg" th:href="@{/register}">Create student account</a>
+                    <a class="btn btn-outline-light btn-lg" th:href="@{/login}">Log in</a>
+                </div>
+            </div>
+            <div class="col-lg-5">
+                <div class="hero-panel">
+                    <p class="mb-3 fw-semibold">Every complaint moves through clear stages</p>
+                    <div class="d-flex flex-wrap gap-2">
+                        <span class="badge rounded-pill bg-secondary">Submitted</span>
+                        <span class="badge rounded-pill bg-info text-dark">Acknowledged</span>
+                        <span class="badge rounded-pill bg-primary">Assigned</span>
+                        <span class="badge rounded-pill bg-warning text-dark">In Progress</span>
+                        <span class="badge rounded-pill bg-success">Resolved</span>
+                        <span class="badge rounded-pill bg-danger">Rejected</span>
+                    </div>
+                    <p class="mt-3 mb-0 small text-white-50">Each change is logged with the remark from the maintenance office.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</header>
+
+<section class="container py-5">
+    <h2 class="page-title text-center mb-5">What you can do with CampusFix</h2>
+    <div class="row g-4">
+        <div class="col-md-6 col-lg-3"><div class="cf-card p-4 h-100"><div class="feature-icon"><i class="bi bi-camera"></i></div><h3 class="h5">Report with a photo</h3><p class="text-muted mb-0">Describe the problem, pick the location and attach a picture so staff arrive prepared.</p></div></div>
+        <div class="col-md-6 col-lg-3"><div class="cf-card p-4 h-100"><div class="feature-icon"><i class="bi bi-signpost-split"></i></div><h3 class="h5">Follow every step</h3><p class="text-muted mb-0">See who is assigned, what status the repair is in and every remark added along the way.</p></div></div>
+        <div class="col-md-6 col-lg-3"><div class="cf-card p-4 h-100"><div class="feature-icon"><i class="bi bi-person-gear"></i></div><h3 class="h5">Assign the right staff</h3><p class="text-muted mb-0">Administrators assign electricians, plumbers and network staff and filter by priority.</p></div></div>
+        <div class="col-md-6 col-lg-3"><div class="cf-card p-4 h-100"><div class="feature-icon"><i class="bi bi-bar-chart-line"></i></div><h3 class="h5">See the big picture</h3><p class="text-muted mb-0">Live totals and category breakdowns show where the campus needs attention.</p></div></div>
+    </div>
+</section>
+
+<footer class="cf-footer text-center py-4"><p class="mb-0">CampusFix &middot; Built as a DevOps mini-project with Spring Boot, Jenkins, Ansible and Azure.</p></footer>
+<div th:replace="~{fragments :: scripts}"></div>
+</body>
+</html>

@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments :: head('Student dashboard')}"></head>
+<body>
+<nav th:replace="~{fragments :: studentNav('dashboard')}"></nav>
+<main class="container py-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+        <div>
+            <h1 class="h3 page-title mb-0">Hello, <span th:text="${currentUser != null ? currentUser.fullName : 'Student'}">Student</span></h1>
+            <p class="text-muted mb-0">Here is where your complaints stand.</p>
+        </div>
+        <a class="btn btn-teal" th:href="@{/student/complaints/new}"><i class="bi bi-plus-circle"></i> Submit complaint</a>
+    </div>
+    <div th:replace="~{fragments :: flash}"></div>
+    <div class="row g-3 mb-4">
+        <div class="col-12 col-md-4"><div class="cf-card stat-card"><div class="stat-icon navy"><i class="bi bi-collection"></i></div><div><div class="stat-number" th:text="${stats.total()}">0</div><div class="stat-label">Total complaints</div></div></div></div>
+        <div class="col-12 col-md-4"><div class="cf-card stat-card"><div class="stat-icon amber"><i class="bi bi-hourglass-split"></i></div><div><div class="stat-number" th:text="${stats.pending()}">0</div><div class="stat-label">Pending</div></div></div></div>
+        <div class="col-12 col-md-4"><div class="cf-card stat-card"><div class="stat-icon green"><i class="bi bi-check2-circle"></i></div><div><div class="stat-number" th:text="${stats.resolved()}">0</div><div class="stat-label">Resolved</div></div></div></div>
+    </div>
+    <div class="cf-card p-3 p-md-4">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <h2 class="h5 page-title mb-0">Recent complaints</h2>
+            <a th:href="@{/student/complaints}">View all</a>
+        </div>
+        <div th:replace="~{fragments :: complaintTable(${recent}, false)}"></div>
+    </div>
+</main>
+<div th:replace="~{fragments :: scripts}"></div>
+</body>
+</html>

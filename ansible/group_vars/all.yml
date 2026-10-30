@@ -1,0 +1,23 @@
+# Non-secret settings. Secrets come from environment variables on the machine that runs Ansible
+# (Jenkins credentials or the Azure DevOps variable group), so nothing sensitive is stored in Git.
+app_name: campusfix
+app_user: campusfix
+app_dir: /opt/campusfix
+upload_dir: /opt/campusfix/uploads
+env_dir: /etc/campusfix
+app_port: 8080
+java_package: openjdk-17-jre-headless
+
+# Install MySQL on the same VM. Set to false to use an external server (e.g. Azure Database for MySQL)
+# and then provide db_url yourself.
+install_mysql: true
+db_name: campusfix
+db_user: campusfix
+db_url: "jdbc:mysql://localhost:3306/{{ db_name }}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC"
+
+db_password: "{{ lookup('env', 'DB_PASSWORD') }}"
+admin_email: "{{ lookup('env', 'ADMIN_EMAIL') | default('admin@campusfix.local', true) }}"
+admin_password: "{{ lookup('env', 'ADMIN_PASSWORD') }}"
+
+# Path of the JAR on the control machine (overridden by CI with -e jar_src=...)
+jar_src: "{{ playbook_dir }}/../target/campusfix.jar"

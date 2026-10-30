@@ -1,0 +1,7 @@
+---
+- name: Install OpenJDK
+  ansible.builtin.apt:
+    name: "{{ java_package }}"
+    state: present
+    update_cache: true
+    cache_valid_time: 3600

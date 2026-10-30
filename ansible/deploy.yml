@@ -1,0 +1,20 @@
+---
+# Deploys CampusFix: Java -> (MySQL) -> application JAR + systemd service.
+#   ansible-playbook -i inventory.ini deploy.yml
+- name: Deploy CampusFix to the Azure VM
+  hosts: campusfix
+  become: true
+  pre_tasks:
+    - name: Make sure required secrets were supplied
+      ansible.builtin.assert:
+        that:
+          - db_password | length > 0
+          - admin_password | length > 0
+        fail_msg: "Export DB_PASSWORD and ADMIN_PASSWORD before running this playbook."
+      delegate_to: localhost
+      become: false
+  roles:
+    - java
+    - role: mysql
+      when: install_mysql | bool
+    - campusfix

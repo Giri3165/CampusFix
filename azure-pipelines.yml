@@ -1,0 +1,137 @@
+# CampusFix - Azure DevOps pipeline (Unit V)
+# Stages: Build (checkout, deps, compile, test, package, publish) -> Deploy (Ansible to the Azure VM)
+#
+# One-time setup in Azure DevOps (details in docs/DEVOPS_GUIDE.md):
+#   1. Pipelines > Library > Variable group "campusfix-secrets" with SECRET variables:
+#        VM_HOST, VM_USER, DB_PASSWORD, ADMIN_PASSWORD
+#   2. Pipelines > Library > Secure files: upload your VM private key as "azure-vm-key.pem"
+#   3. Pipelines > Environments: create "campusfix-prod" (optionally add an approval check)
+
+trigger:
+  branches:
+    include: [main, develop]
+
+pr:
+  branches:
+    include: [main]
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  MAVEN_CACHE_FOLDER: $(Pipeline.Workspace)/.m2/repository
+  MAVEN_OPTS: '-Dmaven.repo.local=$(MAVEN_CACHE_FOLDER)'
+
+stages:
+  - stage: Build
+    displayName: Build and test
+    jobs:
+      - job: Maven
+        displayName: Maven build
+        steps:
+          - checkout: self                      # 1. Source checkout
+            displayName: Source checkout
+
+          - task: Cache@2
+            displayName: Cache Maven repository
+            inputs:
+              key: 'maven | "$(Agent.OS)" | pom.xml'
+              restoreKeys: |
+                maven | "$(Agent.OS)"
+              path: $(MAVEN_CACHE_FOLDER)
+
+          - task: Maven@3                       # 2. Dependency installation
+            displayName: Install dependencies
+            inputs:
+              mavenPomFile: pom.xml
+              goals: dependency:go-offline
+              javaHomeOption: JDKVersion
+              jdkVersionOption: '1.17'
+              options: '-B -ntp'
+
+          - task: Maven@3                       # 3. Compilation
+            displayName: Compile
+            inputs:
+              mavenPomFile: pom.xml
+              goals: clean compile
+              javaHomeOption: JDKVersion
+              jdkVersionOption: '1.17'
+              options: '-B -ntp'
+
+          - task: Maven@3                       # 4. Automated tests (regression suite)
+            displayName: Run JUnit tests
+            inputs:
+              mavenPomFile: pom.xml
+              goals: test
+              options: '-B -ntp -Pci'
+              javaHomeOption: JDKVersion
+              jdkVersionOption: '1.17'
+              publishJUnitResults: true
+              testResultsFiles: '**/surefire-reports/TEST-*.xml'
+
+          - task: Maven@3                       # 5. JAR packaging
+            displayName: Package JAR
+            inputs:
+              mavenPomFile: pom.xml
+              goals: package
+              options: '-B -ntp -DskipTests'
+              javaHomeOption: JDKVersion
+              jdkVersionOption: '1.17'
+
+          - task: CopyFiles@2
+            displayName: Stage deployable files
+            inputs:
+              contents: |
+                target/campusfix.jar
+                ansible/**
+              targetFolder: $(Build.ArtifactStagingDirectory)
+
+          - task: PublishPipelineArtifact@1     # 6. Artifact publishing
+            displayName: Publish artifact
+            inputs:
+              targetPath: $(Build.ArtifactStagingDirectory)
+              artifact: campusfix-drop
+              publishLocation: pipeline
+
+  - stage: Deploy
+    displayName: Deploy to Azure
+    dependsOn: Build
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+    variables:
+      - group: campusfix-secrets
+    jobs:
+      - deployment: AzureVM                     # 7. Deployment to the Azure environment
+        displayName: Deploy with Ansible
+        environment: campusfix-prod
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - download: current
+                  artifact: campusfix-drop
+
+                - task: DownloadSecureFile@1
+                  name: sshKey
+                  displayName: Download SSH key
+                  inputs:
+                    secureFile: azure-vm-key.pem
+
+                - script: |
+                    set -e
+                    python3 -m venv "$(Agent.TempDirectory)/venv"
+                    . "$(Agent.TempDirectory)/venv/bin/activate"
+                    pip install --quiet ansible
+                    cd "$(Pipeline.Workspace)/campusfix-drop"
+                    chmod 600 "$(sshKey.secureFilePath)"
+                    printf "[campusfix]\n%s ansible_user=%s ansible_ssh_private_key_file=%s\n" \
+                      "$VM_HOST" "$VM_USER" "$(sshKey.secureFilePath)" > ansible/inventory.generated
+                    ansible-galaxy collection install -r ansible/requirements.yml
+                    ansible-playbook -i ansible/inventory.generated ansible/deploy.yml \
+                      -e jar_src="$(Pipeline.Workspace)/campusfix-drop/target/campusfix.jar"
+                  displayName: Run Ansible deployment
+                  env:                                  # secrets must be mapped explicitly
+                    ANSIBLE_HOST_KEY_CHECKING: 'False'
+                    VM_HOST: $(VM_HOST)
+                    VM_USER: $(VM_USER)
+                    DB_PASSWORD: $(DB_PASSWORD)
+                    ADMIN_PASSWORD: $(ADMIN_PASSWORD)

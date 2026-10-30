@@ -1,0 +1,16 @@
+[Unit]
+Description=CampusFix - Smart Campus Complaint Management System
+After=network.target mysql.service
+
+[Service]
+User={{ app_user }}
+Group={{ app_user }}
+WorkingDirectory={{ app_dir }}
+EnvironmentFile={{ env_dir }}/campusfix.env
+ExecStart=/usr/bin/java -Xms256m -Xmx512m -jar {{ app_dir }}/campusfix.jar
+SuccessExitStatus=143
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
