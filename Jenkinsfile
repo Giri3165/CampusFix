@@ -1,6 +1,3 @@
-// CampusFix CI/CD pipeline for Jenkins (Unit III).
-// Required: Global Tool Configuration -> JDK named "JDK17" and Maven named "Maven3".
-// Required plugins: Git, Pipeline, Maven Integration, HTML Publisher, Credentials Binding, JUnit.
 pipeline {
     agent any
 
@@ -10,7 +7,7 @@ pipeline {
     }
 
     triggers {
-        githubPush()          // build on every push (needs the GitHub webhook, see docs/DEVOPS_GUIDE.md)
+        githubPush()
     }
 
     options {
@@ -20,63 +17,79 @@ pipeline {
     }
 
     parameters {
-        choice(name: 'MAVEN_PROFILE', choices: ['ci', 'fast'], description: 'ci = run tests with JaCoCo coverage, fast = skip tests')
-        booleanParam(name: 'DEPLOY', defaultValue: false, description: 'Deploy to the Azure VM with Ansible after a successful build')
+        choice(name: 'MAVEN_PROFILE', choices: ['ci', 'fast'],
+               description: 'ci = run tests, fast = skip tests')
+        booleanParam(name: 'DEPLOY', defaultValue: false,
+                     description: 'Deploy to Azure VM')
     }
 
     stages {
         stage('Checkout') {
-            steps { checkout scm }
+            steps {
+                checkout scm
+            }
         }
 
         stage('Build') {
-            steps { sh 'mvn -B -ntp clean compile' }
+            steps {
+                bat 'mvn -B -ntp clean compile'
+            }
         }
 
         stage('Test') {
-            steps { sh "mvn -B -ntp test -P${params.MAVEN_PROFILE}" }
+            steps {
+                bat "mvn -B -ntp test -P${params.MAVEN_PROFILE}"
+            }
             post {
                 always {
-                    junit allowEmptyResults: true, testResults: 'target/surefire-reports/*.xml'
+                    junit allowEmptyResults: true,
+                          testResults: 'target/surefire-reports/*.xml'
+
                     publishHTML(target: [
-                        reportDir: 'target/site/jacoco', reportFiles: 'index.html',
-                        reportName: 'JaCoCo Coverage', keepAll: true,
-                        alwaysLinkToLastBuild: true, allowMissing: true])
+                        reportDir: 'target/site/jacoco',
+                        reportFiles: 'index.html',
+                        reportName: 'JaCoCo Coverage',
+                        keepAll: true,
+                        alwaysLinkToLastBuild: true,
+                        allowMissing: true
+                    ])
                 }
             }
         }
 
         stage('Package') {
-            steps { sh 'mvn -B -ntp package -DskipTests' }
+            steps {
+                bat 'mvn -B -ntp package -DskipTests'
+            }
         }
 
         stage('Archive') {
-            steps { archiveArtifacts artifacts: 'target/campusfix.jar', fingerprint: true }
+            steps {
+                archiveArtifacts artifacts: 'target/campusfix.jar',
+                                 fingerprint: true
+            }
         }
 
         stage('Deploy to Azure VM') {
-            when { expression { params.DEPLOY } }
+            when {
+                expression { params.DEPLOY }
+            }
             steps {
-                withCredentials([
-                    sshUserPrivateKey(credentialsId: 'azure-vm-ssh', keyFileVariable: 'SSH_KEY', usernameVariable: 'SSH_USER'),
-                    string(credentialsId: 'campusfix-db-password', variable: 'DB_PASSWORD'),
-                    string(credentialsId: 'campusfix-admin-password', variable: 'ADMIN_PASSWORD'),
-                    string(credentialsId: 'azure-vm-host', variable: 'VM_HOST')
-                ]) {
-                    sh '''
-                        printf "[campusfix]\\n%s ansible_user=%s ansible_ssh_private_key_file=%s\\n" "$VM_HOST" "$SSH_USER" "$SSH_KEY" > ansible/inventory.generated
-                        export ANSIBLE_HOST_KEY_CHECKING=False
-                        ansible-galaxy collection install -r ansible/requirements.yml
-                        ansible-playbook -i ansible/inventory.generated ansible/deploy.yml -e jar_src="$WORKSPACE/target/campusfix.jar"
-                    '''
-                }
+                echo 'Azure deployment requires a Linux agent with Ansible configured.'
+                error 'Deployment not configured on this Windows Jenkins agent.'
             }
         }
     }
 
     post {
-        success { echo 'CampusFix build finished successfully.' }
-        failure { echo 'CampusFix build failed - check the stage logs above.' }
-        cleanup { sh 'rm -f ansible/inventory.generated' }
+        success {
+            echo 'CampusFix build finished successfully.'
+        }
+        failure {
+            echo 'CampusFix build failed - check the stage logs above.'
+        }
+        cleanup {
+            bat 'if exist ansible\\inventory.generated del ansible\\inventory.generated'
+        }
     }
 }
